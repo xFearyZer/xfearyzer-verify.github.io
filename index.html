@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Xác minh truy cập | Advanced Toolkit</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
-        /* ===== CSS RESET ===== */
         * {
             margin: 0;
             padding: 0;
@@ -13,7 +13,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        /* ===== BODY STYLE ===== */
         body {
             background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             color: #ffffff;
@@ -25,7 +24,6 @@
             padding: 20px;
         }
         
-        /* ===== CONTAINER STYLE ===== */
         .verify-container {
             background: rgba(20, 20, 35, 0.9);
             border-radius: 15px;
@@ -42,22 +40,15 @@
             font-size: 1.8rem;
         }
         
-        /* ===== LOADING ANIMATION ===== */
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 5px solid rgba(106, 90, 205, 0.3);
-            border-top-color: #6a5acd;
-            border-radius: 50%;
-            margin: 20px auto;
-            animation: spin 1s linear infinite;
+        .captcha-box {
+            margin: 25px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* ===== STATUS MESSAGE ===== */
         .status {
             margin: 20px 0;
             padding: 15px;
@@ -70,12 +61,21 @@
             border-left: 4px solid #ff4757;
         }
         
-        .status.success {
-            background: rgba(0, 255, 0, 0.1);
-            border-left: 4px solid #2ed573;
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(106, 90, 205, 0.3);
+            border-top-color: #6a5acd;
+            border-radius: 50%;
+            margin: 20px auto;
+            animation: spin 1s linear infinite;
+            display: none;
         }
         
-        /* ===== BUTTON STYLE ===== */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         .btn {
             background: linear-gradient(90deg, #6a5acd, #9370db);
             color: white;
@@ -87,97 +87,106 @@
             font-weight: 500;
             transition: all 0.3s ease;
             margin-top: 20px;
-            text-decoration: none;
-            display: inline-block;
+            display: none;
         }
         
         .btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 5px 15px rgba(106, 90, 205, 0.4);
         }
-        
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 600px) {
-            .verify-container {
-                padding: 20px;
-            }
-            
-            h1 {
-                font-size: 1.5rem;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="verify-container">
-        <h1>Đang xác minh truy cập</h1>
-        <div class="loader"></div>
-        <div class="status" id="statusMessage">
-            Đang kiểm tra thông tin...
+        <h1>Xác minh bảo mật</h1>
+        
+        <div id="captchaSection">
+            <p>Vui lòng xác minh bạn không phải là robot</p>
+            <div class="captcha-box">
+                <div class="g-recaptcha" 
+                     data-sitekey="6LeF8KIrAAAAAHmVjma-xpsg47oa2tKSmi84LzP_" 
+                     data-callback="onCaptchaSuccess"
+                     data-expired-callback="onCaptchaExpired"></div>
+            </div>
+            <div class="status error" id="errorMessage" style="display: none;"></div>
         </div>
-        <a href="#" class="btn" id="redirectBtn" style="display: none;">Tiếp tục</a>
+        
+        <div id="processingSection" style="display: none;">
+            <div class="loader"></div>
+            <div class="status" id="statusMessage">Đang tạo phiên truy cập...</div>
+            <button class="btn" id="manualRedirect">Tiếp tục thủ công</button>
+        </div>
     </div>
 
     <script>
         // ===== CẤU HÌNH =====
         const KEY_SYSTEM_URL = "https://xfearyzer-keysystem.netlify.app";
+        const TOKEN_DURATION_MINUTES = 30;
         
-        // ===== HÀM TẠO TOKEN =====
-        function generateToken() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let token = '';
-            for (let i = 0; i < 16; i++) {
-                token += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return 'key_' + token;
+        // ===== XỬ LÝ CAPTCHA =====
+        function onCaptchaSuccess(captchaToken) {
+            // Ẩn CAPTCHA, hiển thị loading
+            document.getElementById('captchaSection').style.display = 'none';
+            document.getElementById('processingSection').style.display = 'block';
+            document.querySelector('.loader').style.display = 'block';
+            document.getElementById('statusMessage').textContent = "Đang xử lý...";
+            
+            // Tạo thông tin truy cập
+            setTimeout(() => {
+                generateAccess(captchaToken);
+            }, 1500);
         }
         
-        // ===== XỬ LÝ KHI TRANG LOAD =====
-        document.addEventListener('DOMContentLoaded', function() {
-            const params = new URLSearchParams(window.location.search);
-            const expiry = params.get('exp');
-            const statusEl = document.getElementById('statusMessage');
-            const redirectBtn = document.getElementById('redirectBtn');
+        function onCaptchaExpired() {
+            showError("CAPTCHA đã hết hạn. Vui lòng thử lại");
+            grecaptcha.reset();
+        }
+        
+        // ===== TẠO PHIÊN TRUY CẬP =====
+        function generateAccess(captchaToken) {
+            // Tạo token ngẫu nhiên
+            const accessToken = generateToken();
             
-            // Kiểm tra tham số expiry
-            if (!expiry) {
-                statusEl.innerHTML = '❌ Thiếu tham số bắt buộc (exp)';
-                statusEl.classList.add('error');
-                return;
-            }
-            
-            // Kiểm tra thời hạn
-            const currentTime = Math.floor(Date.now() / 1000);
-            const expiryTime = parseInt(expiry);
-            
-            if (currentTime > expiryTime) {
-                statusEl.innerHTML = '⚠️ Link đã hết hạn. Vui lòng tạo link mới từ trang chính';
-                statusEl.classList.add('error');
-                return;
-            }
-            
-            // Tạo token mới
-            const token = generateToken();
+            // Thời hạn 30 phút
+            const expiryTime = Math.floor(Date.now() / 1000) + (TOKEN_DURATION_MINUTES * 60);
             
             // Hiển thị thông báo thành công
-            statusEl.innerHTML = `
-                ✔️ Xác minh thành công!<br><br>
-                <small>Token sẽ được tự động chuyển tiếp...</small>
+            document.querySelector('.loader').style.display = 'none';
+            document.getElementById('statusMessage').innerHTML = `
+                <div class="status success">
+                    ✔️ Xác minh thành công!<br>
+                    <small>Đang chuyển hướng...</small>
+                </div>
             `;
-            statusEl.classList.add('success');
+            
+            // Hiển thị nút thủ công (dự phòng)
+            const redirectBtn = document.getElementById('manualRedirect');
+            redirectBtn.style.display = 'inline-block';
             
             // Tạo URL chuyển hướng
-            const redirectUrl = `${KEY_SYSTEM_URL}?token=${token}&exp=${expiry}`;
-            
-            // Hiển thị nút tiếp tục (dự phòng)
-            redirectBtn.style.display = 'inline-block';
-            redirectBtn.href = redirectUrl;
+            const redirectUrl = `${KEY_SYSTEM_URL}?token=${accessToken}&exp=${expiryTime}&captcha=${captchaToken}`;
+            redirectBtn.onclick = () => window.location.href = redirectUrl;
             
             // Tự động chuyển hướng sau 3 giây
             setTimeout(() => {
                 window.location.href = redirectUrl;
             }, 3000);
-        });
+        }
+        
+        // ===== TIỆN ÍCH =====
+        function generateToken() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let token = '';
+            for (let i = 0; i < 20; i++) {
+                token += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return 'key_' + token;
+        }
+        
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorMessage').style.display = 'block';
+        }
     </script>
 </body>
 </html>
