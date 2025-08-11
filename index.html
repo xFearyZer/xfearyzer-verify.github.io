@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác minh truy cập | Advanced Toolkit</title>
+    <title>Access Verification | KeySystem</title>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         * {
@@ -98,10 +98,10 @@
 </head>
 <body>
     <div class="verify-container">
-        <h1>Xác minh bảo mật</h1>
+        <h1>Security Verification</h1>
         
         <div id="captchaSection">
-            <p>Vui lòng xác minh bạn không phải là robot</p>
+            <p>Please verify you're not a robot</p>
             <div class="captcha-box">
                 <div class="g-recaptcha" 
                      data-sitekey="6LeF8KIrAAAAAHmVjma-xpsg47oa2tKSmi84LzP_" 
@@ -113,74 +113,66 @@
         
         <div id="processingSection" style="display: none;">
             <div class="loader"></div>
-            <div class="status" id="statusMessage">Đang tạo phiên truy cập...</div>
-            <button class="btn" id="manualRedirect">Tiếp tục thủ công</button>
+            <div class="status" id="statusMessage">Creating access session...</div>
+            <button class="btn" id="manualRedirect">Continue Manually</button>
         </div>
     </div>
 
     <script>
-        // ===== CẤU HÌNH =====
+        // Configuration
         const KEY_SYSTEM_URL = "https://xfearyzer-keysystem.netlify.app";
+        const MAIN_PAGE_URL = "https://xfearyzer.github.io";
         const TOKEN_DURATION_MINUTES = 30;
         
-        // ===== XỬ LÝ CAPTCHA =====
+        // CAPTCHA Handlers
         function onCaptchaSuccess(captchaToken) {
-            // Ẩn CAPTCHA, hiển thị loading
             document.getElementById('captchaSection').style.display = 'none';
             document.getElementById('processingSection').style.display = 'block';
             document.querySelector('.loader').style.display = 'block';
-            document.getElementById('statusMessage').textContent = "Đang xử lý...";
+            document.getElementById('statusMessage').textContent = "Processing verification...";
             
-            // Tạo thông tin truy cập
             setTimeout(() => {
                 generateAccess(captchaToken);
             }, 1500);
         }
         
         function onCaptchaExpired() {
-            showError("CAPTCHA đã hết hạn. Vui lòng thử lại");
+            showError("CAPTCHA expired. Please try again.");
             grecaptcha.reset();
         }
         
-        // ===== TẠO PHIÊN TRUY CẬP =====
+        // Access Generation
         function generateAccess(captchaToken) {
-            // Tạo token ngẫu nhiên
             const accessToken = generateToken();
+            const expiryTime = Date.now() + (TOKEN_DURATION_MINUTES * 60 * 1000);
             
-            // Thời hạn 30 phút
-            const expiryTime = Math.floor(Date.now() / 1000) + (TOKEN_DURATION_MINUTES * 60);
-            
-            // Hiển thị thông báo thành công
             document.querySelector('.loader').style.display = 'none';
             document.getElementById('statusMessage').innerHTML = `
                 <div class="status success">
-                    ✔️ Xác minh thành công!<br>
-                    <small>Đang chuyển hướng...</small>
+                    ✔️ Verification successful!<br>
+                    <small>Redirecting...</small>
                 </div>
             `;
             
-            // Hiển thị nút thủ công (dự phòng)
             const redirectBtn = document.getElementById('manualRedirect');
             redirectBtn.style.display = 'inline-block';
             
-            // Tạo URL chuyển hướng
-            const redirectUrl = `${KEY_SYSTEM_URL}?token=${accessToken}&exp=${expiryTime}&captcha=${captchaToken}`;
+            const redirectUrl = `${KEY_SYSTEM_URL}?token=${encodeURIComponent(accessToken)}&exp=${expiryTime}`;
             redirectBtn.onclick = () => window.location.href = redirectUrl;
             
-            // Tự động chuyển hướng sau 3 giây
             setTimeout(() => {
                 window.location.href = redirectUrl;
             }, 3000);
         }
         
-        // ===== TIỆN ÍCH =====
+        // Utilities
         function generateToken() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
             let token = '';
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < 32; i++) {
                 token += chars.charAt(Math.floor(Math.random() * chars.length));
             }
-            return 'key_' + token;
+            return token;
         }
         
         function showError(message) {
