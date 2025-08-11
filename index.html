@@ -1,59 +1,136 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Verification Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Key System Redirect</title>
+    <style>
+        /* ===== CSS ===== */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        
+        .container {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        h1 {
+            color: #00c6ff;
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 198, 255, 0.4);
+        }
+        
+        .status {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #00c6ff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Key System Verification</h1>
+        <div class="status" id="status">
+            <div class="loading"></div>
+            <span>Processing your request...</span>
+        </div>
+        <button class="btn" id="redirectBtn">Continue to Key System</button>
+    </div>
+
     <script>
-        // Xử lý khi trang load
-        function init() {
-            const params = new URLSearchParams(location.search);
+        // ===== JavaScript =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const exp = params.get('exp');
+            const mode = params.get('mode');
+            const statusEl = document.getElementById('status');
+            const btn = document.getElementById('redirectBtn');
             
-            // Bước 1: Hiển thị CAPTCHA giả lập
-            if (!params.has('verified')) {
-                showCaptcha();
+            // Kiểm tra tham số
+            if (!token || !exp) {
+                statusEl.innerHTML = '❌ Missing required parameters (token, exp)';
+                btn.style.display = 'none';
                 return;
             }
             
-            // Bước 2: Tạo token và chuyển hướng
-            const token = generateToken();
-            redirectToKeySystem(token);
-        }
-
-        function showCaptcha() {
-            document.body.innerHTML = `
-                <div class="captcha-container">
-                    <h2>Hoàn thành xác minh</h2>
-                    <div class="captcha-box">Nhập mã 123456</div>
-                    <input type="text" id="captcha-input">
-                    <button onclick="verifyCaptcha()">Xác nhận</button>
-                </div>
+            // Hiển thị thông tin
+            statusEl.innerHTML = `
+                ✔️ Parameters detected<br><br>
+                <strong>Token:</strong> ${token.substring(0, 6)}...<br>
+                <strong>Expiry:</strong> ${new Date(parseInt(exp) * 1000).toLocaleString()}<br>
+                <strong>Mode:</strong> ${mode || 'auto'}
             `;
-        }
-
-        function verifyCaptcha() {
-            const input = document.getElementById('captcha-input').value;
-            if (input === '123456') { // CAPTCHA đơn giản
-                const newUrl = new URL(location.href);
-                newUrl.searchParams.set('verified', 'true');
-                location.href = newUrl.toString();
-            } else {
-                alert('Mã xác minh không đúng!');
+            
+            // Chức năng nút bấm
+            btn.addEventListener('click', function() {
+                redirectToKeySystem();
+            });
+            
+            // Tự động redirect sau 3 giây (tuỳ chọn)
+            setTimeout(() => {
+                redirectToKeySystem();
+            }, 3000);
+            
+            function redirectToKeySystem() {
+                const keySystemUrl = `https://xfearyzer-keysystem.netlify.app/?token=${token}&exp=${exp}${mode ? '&mode=' + mode : ''}`;
+                window.location.href = keySystemUrl;
             }
-        }
-
-        function generateToken() {
-            // Tạo token ngẫu nhiên + mã hóa đơn giản
-            const token = btoa(Date.now() + '|' + Math.random().toString(36).substr(2));
-            localStorage.setItem('yt_verify_token', token);
-            return token;
-        }
-
-        function redirectToKeySystem(token) {
-            const keyUrl = new URL('https://xfearyzer.github.io/keysystem/');
-            keyUrl.searchParams.set('vt', token);
-            location.href = keyUrl.toString();
-        }
+            
+            // Debug console
+            console.log('Redirecting with params:', {
+                token: token,
+                exp: exp,
+                mode: mode
+            });
+        });
     </script>
-</head>
-<body onload="init()">
 </body>
 </html>
